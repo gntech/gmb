@@ -47,128 +47,6 @@ func main() {
 	processWorkList(workList)
 }
 
-func writeFrontMatter(f *os.File, workList []item) {
-	t := time.Now()
-
-	f.WriteString("---\n")
-	f.WriteString("title: Title placeholder\n")
-	f.WriteString("date: " + t.Format("2006-01-02") + "\n")
-	f.WriteString("description: Description placeholder\n")
-	f.WriteString("toplevel: True\n")
-	f.WriteString("draft: True\n")
-	//f.WriteString("image_feature: " + page_feature + "\n")
-	//f.WriteString("image_menu: " + page_menu + "\n")
-	f.WriteString("---\n\n")
-	f.WriteString("Text placeholder\n\n")
-}
-
-func writeImageTag(f *os.File, relPath string) {
-	//f.WriteString('{{% fig-l src="/' + filename + '" %}}  {{% /fig-l %}}\n\n')
-	f.WriteString("path" + relPath)
-	//  #f.WriteString('{{% /fig-l %}}\n\n')
-}
-func writeAudioTag(f *os.File, relPath string) {
-	//f.WriteString('{{% audio src="/' + filename + '" %}}\n')
-	//f.WriteString('{{% /audio %}}\n\n')
-}
-
-func writeLinkTag(f *os.File, relPath string) {
-	//f.WriteString('[Link title](/' + filename + ')\n\n')
-}
-
-func writePost(workList []item) {
-	defer wg.Done()
-	log.Println("Writing post...")
-	outputDir := path.Join(viper.GetString("base_dir"), "content")
-	staticDir := path.Join(viper.GetString("base_dir"), "static")
-	post := path.Join(outputDir, viper.GetString("slug")+".en.md")
-
-	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
-		log.Println("Creating dir", outputDir)
-		os.MkdirAll(outputDir, os.ModePerm)
-	}
-
-	if _, err := os.Stat(post); os.IsNotExist(err) {
-		log.Println("Creating post", post)
-		f, err := os.Create(post)
-		check(err)
-		defer f.Close()
-		writeFrontMatter(f, workList)
-	}
-
-	f, err := os.OpenFile(post, os.O_APPEND|os.O_WRONLY, os.ModePerm)
-	check(err)
-	defer f.Close()
-
-	for _, value := range workList {
-		ext := path.Ext(value.Dest)
-		relPath, err := filepath.Rel(staticDir, value.Dest)
-		check(err)
-		switch ext {
-		case ".jpg", ".jpeg", ".JPG", "JPEG", ".png", ".PNG":
-			writeImageTag(f, relPath)
-		case ".mp3", ".MP3", ".ogg", ".OGG":
-			writeAudioTag(f, relPath)
-		default:
-			writeLinkTag(f, relPath)
-		}
-	}
-	log.Println("Writing post... Done!")
-}
-
-func processWorkList(workList []item) {
-	wg.Add(1)
-	go writePost(workList)
-	wg.Add(len(workList))
-
-	for _, value := range workList {
-		value := value
-		outputDir := path.Dir(value.Dest)
-
-		if _, err := os.Stat(outputDir); os.IsNotExist(err) {
-			log.Println("Creating dir", outputDir)
-			os.MkdirAll(outputDir, os.ModePerm)
-		}
-
-		if value.Limit != 0 {
-			go func() {
-				defer wg.Done()
-				processImg(value.Src, value.Dest, value.Limit)
-			}()
-			continue
-		} else {
-			go func() {
-				defer wg.Done()
-				copyFile(value.Src, value.Dest)
-			}()
-			continue
-		}
-	}
-
-	// wait for all goroutines to complete before exiting
-	wg.Wait()
-}
-
-func copyFile(src, dest string) {
-	log.Print("Copy: ", path.Base(dest))
-	from, err := os.Open(src)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer from.Close()
-
-	to, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer to.Close()
-
-	_, err = io.Copy(to, from)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func getWorkList() (workList []item) {
 	inputDir := getInputDir(viper.ConfigFileUsed())
 	baseDir := viper.GetString("base_dir")
@@ -209,6 +87,51 @@ func getWorkList() (workList []item) {
 		}
 	}
 	return workList
+}
+
+func getInputDir(cf string) string {
+	p := path.Dir(cf)
+	if path.IsAbs(p) {
+		return p
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Cant find current working directory %v", err)
+	}
+	return path.Join(wd, p)
+}
+
+func processWorkList(workList []item) {
+	wg.Add(1)
+	go writePost(workList)
+	wg.Add(len(workList))
+
+	for _, value := range workList {
+		value := value
+		outputDir := path.Dir(value.Dest)
+
+		if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+			log.Println("Creating dir", outputDir)
+			os.MkdirAll(outputDir, os.ModePerm)
+		}
+
+		if value.Limit != 0 {
+			go func() {
+				defer wg.Done()
+				processImg(value.Src, value.Dest, value.Limit)
+			}()
+			continue
+		} else {
+			go func() {
+				defer wg.Done()
+				copyFile(value.Src, value.Dest)
+			}()
+			continue
+		}
+	}
+
+	// wait for all goroutines to complete before exiting
+	wg.Wait()
 }
 
 func processImg(src, dest string, limit int) {
@@ -270,14 +193,90 @@ func getOrientation(f *os.File) (ot int64, err error) {
 	return
 }
 
-func getInputDir(cf string) string {
-	p := path.Dir(cf)
-	if path.IsAbs(p) {
-		return p
-	}
-	wd, err := os.Getwd()
+func copyFile(src, dest string) {
+	log.Print("Copy: ", path.Base(dest))
+	from, err := os.Open(src)
 	if err != nil {
-		log.Fatalf("Cant find current working directory %v", err)
+		log.Fatal(err)
 	}
-	return path.Join(wd, p)
+	defer from.Close()
+
+	to, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer to.Close()
+
+	_, err = io.Copy(to, from)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func writePost(workList []item) {
+	defer wg.Done()
+	log.Println("Writing post...")
+	outputDir := path.Join(viper.GetString("base_dir"), "content")
+	staticDir := path.Join(viper.GetString("base_dir"), "static")
+	post := path.Join(outputDir, viper.GetString("slug")+".en.md")
+
+	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+		log.Println("Creating dir", outputDir)
+		os.MkdirAll(outputDir, os.ModePerm)
+	}
+
+	if _, err := os.Stat(post); os.IsNotExist(err) {
+		log.Println("Creating post", post)
+		f, err := os.Create(post)
+		check(err)
+		defer f.Close()
+		writeFrontMatter(f, workList)
+	}
+
+	f, err := os.OpenFile(post, os.O_APPEND|os.O_WRONLY, os.ModePerm)
+	check(err)
+	defer f.Close()
+
+	for _, value := range workList {
+		ext := path.Ext(value.Dest)
+		relPath, err := filepath.Rel(staticDir, value.Dest)
+		check(err)
+		switch ext {
+		case ".jpg", ".jpeg", ".JPG", "JPEG", ".png", ".PNG":
+			writeImageTag(f, relPath)
+		case ".mp3", ".MP3", ".ogg", ".OGG":
+			writeAudioTag(f, relPath)
+		default:
+			writeLinkTag(f, relPath)
+		}
+	}
+	log.Println("Writing post... Done!")
+}
+
+func writeFrontMatter(f *os.File, workList []item) {
+	t := time.Now()
+	f.WriteString("---\n")
+	f.WriteString("title: Title placeholder\n")
+	f.WriteString("date: " + t.Format("2006-01-02") + "\n")
+	f.WriteString("description: Description placeholder\n")
+	f.WriteString("toplevel: True\n")
+	f.WriteString("draft: True\n")
+	//f.WriteString("image_feature: " + page_feature + "\n")
+	//f.WriteString("image_menu: " + page_menu + "\n")
+	f.WriteString("---\n\n")
+	f.WriteString("Text placeholder\n\n")
+}
+
+func writeImageTag(f *os.File, relPath string) {
+	//f.WriteString('{{% fig-l src="/' + filename + '" %}}  {{% /fig-l %}}\n\n')
+	f.WriteString("path" + relPath)
+	//  #f.WriteString('{{% /fig-l %}}\n\n')
+}
+func writeAudioTag(f *os.File, relPath string) {
+	//f.WriteString('{{% audio src="/' + filename + '" %}}\n')
+	//f.WriteString('{{% /audio %}}\n\n')
+}
+
+func writeLinkTag(f *os.File, relPath string) {
+	//f.WriteString('[Link title](/' + filename + ')\n\n')
 }
