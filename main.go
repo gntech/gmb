@@ -1,3 +1,6 @@
+// gmb automates the media part of writing blogposts.
+// It process images and other files and creates a stub post with all links prefilled.
+// It needs to be runned with a gmbconfig.yml in the same directory as the original media files.
 package main
 
 import (
@@ -20,6 +23,7 @@ func check(e error) {
 	}
 }
 
+// The basic work item
 type item struct {
 	Src   string
 	Dest  string
@@ -35,7 +39,7 @@ var (
 
 func main() {
 	if len(os.Args) > 1 {
-		viper.SetConfigFile(os.Args[1])
+		viper.SetConfigFile(os.Args[1]) // Prefer to use config file provided as argument
 	} else {
 		viper.SetConfigName("gmbconfig") // name of config file (without extension)
 		viper.AddConfigPath(".")         // optionally look for config in the working directory
@@ -45,12 +49,19 @@ func main() {
 		log.Fatalf("fatal error config file: %s", err)
 	}
 
+	// Add default values to options if not set in config file
 	viper.SetDefault("img_limit", 800)
 	viper.SetDefault("menu_limit", 900)
 	viper.SetDefault("feature_limit", 1280)
-	post := path.Join(viper.GetString("base_dir"), "content", viper.GetString("slug")+".en.md")
+
+	// Generate the worklist
 	workList := getWorkList()
+
+	// Create the post stub
+	post := path.Join(viper.GetString("base_dir"), "content", viper.GetString("slug")+".en.md")
 	createPost(post)
+
+	// Do the image processing and copying as well as fill in the links in the post
 	processWorkList(workList, post)
 }
 
@@ -61,7 +72,7 @@ func getWorkList() (workList []item) {
 	menuLimit := viper.GetInt("menu_limit")
 	featureLimit := viper.GetInt("feature_limit")
 	imgLimit := viper.GetInt("img_limit")
-	_, configFile := path.Split(viper.ConfigFileUsed())
+	configFile := path.Base(viper.ConfigFileUsed())
 
 	files, err := ioutil.ReadDir(inputDir)
 	if err != nil {
@@ -94,8 +105,8 @@ func getWorkList() (workList []item) {
 		default:
 			Link = path.Join("other", slug, file.Name())
 		}
-		dstAbs := path.Join(staticDir, Link)
-		workList = append(workList, item{srcAbs, dstAbs, Link, Limit})
+		destAbs := path.Join(staticDir, Link)
+		workList = append(workList, item{srcAbs, destAbs, Link, Limit})
 	}
 	return workList
 }
