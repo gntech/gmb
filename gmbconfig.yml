@@ -1,0 +1,6 @@
+base_dir: "/home/gustav/go/src/gomediabot/test/3"
+slug: "bandsaw-base"
+feature: "bandsaw-base-menu.jpg"
+ignore:
+    - "ms.yml"
+    - "IMG_20170622_210837.jpg"
