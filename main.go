@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,8 @@ type item struct {
 	Dest  string
 	Limit int
 }
+
+var wg sync.WaitGroup
 
 func main() {
 	if len(os.Args) > 1 {
@@ -40,14 +43,8 @@ func main() {
 	viper.SetDefault("img_limit", 800)
 	viper.SetDefault("menu_limit", 900)
 	viper.SetDefault("feature_limit", 1280)
-
-	log.Println("Config", viper.AllKeys())
-
 	workList := getWorkList()
-
 	processWorkList(workList)
-
-	writePost(workList)
 }
 
 func writeFrontMatter(f *os.File, workList []item) {
@@ -80,6 +77,8 @@ func writeLinkTag(f *os.File, relPath string) {
 }
 
 func writePost(workList []item) {
+	defer wg.Done()
+	log.Println("Writing post...")
 	outputDir := path.Join(viper.GetString("base_dir"), "content")
 	staticDir := path.Join(viper.GetString("base_dir"), "static")
 	post := path.Join(outputDir, viper.GetString("slug")+".en.md")
@@ -114,10 +113,13 @@ func writePost(workList []item) {
 			writeLinkTag(f, relPath)
 		}
 	}
+	log.Println("Writing post... Done!")
 }
 
 func processWorkList(workList []item) {
-	done := make(chan bool)
+	wg.Add(1)
+	go writePost(workList)
+	wg.Add(len(workList))
 
 	for _, value := range workList {
 		value := value
@@ -130,27 +132,25 @@ func processWorkList(workList []item) {
 
 		if value.Limit != 0 {
 			go func() {
+				defer wg.Done()
 				processImg(value.Src, value.Dest, value.Limit)
-				done <- true
 			}()
 			continue
 		} else {
 			go func() {
+				defer wg.Done()
 				copyFile(value.Src, value.Dest)
-				done <- true
 			}()
 			continue
 		}
 	}
 
 	// wait for all goroutines to complete before exiting
-	for _ = range workList {
-		<-done
-	}
+	wg.Wait()
 }
 
 func copyFile(src, dest string) {
-	log.Print("Copy: ", src, dest)
+	log.Print("Copy: ", path.Base(dest))
 	from, err := os.Open(src)
 	if err != nil {
 		log.Fatal(err)
@@ -212,13 +212,13 @@ func getWorkList() (workList []item) {
 }
 
 func processImg(src, dest string, limit int) {
-	log.Println("Img: ", src, dest)
+	log.Println("Process img: ", path.Base(dest))
 	f, err := os.Open(src)
 	defer f.Close()
 	check(err)
 	ot, err := getOrientation(f)
 	if err != nil {
-		log.Print("No Orientation tag found, move on, nothing to see here")
+		//log.("No orient tag.")
 	}
 	img, err := imaging.Open(src)
 	check(err)
@@ -246,6 +246,7 @@ func processImg(src, dest string, limit int) {
 	img = imaging.Fit(img, limit, limit, imaging.Lanczos)
 	err = imaging.Save(img, dest)
 	check(err)
+	log.Println("Process img... Done!", path.Base(dest))
 }
 
 func getOrientation(f *os.File) (ot int64, err error) {
