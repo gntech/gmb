@@ -72,7 +72,7 @@ func getWorkList() (workList []item) {
 		srcAbs := path.Join(inputDir, file.Name())
 		var Link string
 		Limit := 0
-		if file.IsDir() || file.Name() == configFile {
+		if file.IsDir() || file.Name() == configFile || strings.HasPrefix(file.Name(), ".") {
 			continue
 		}
 		if file.Name() == viper.GetString("feature") {
@@ -86,7 +86,6 @@ func getWorkList() (workList []item) {
 		switch ext {
 		case ".jpg", ".jpeg", ".JPG", "JPEG":
 			Link = path.Join("images", slug, file.Name())
-			log.Println("Debug:", Link)
 			Limit = imgLimit
 		case ".png", ".PNG":
 			Link = path.Join("images", slug, file.Name())
@@ -125,8 +124,7 @@ func processWorkList(workList []item, post string) {
 		value := value
 		destDir := path.Dir(value.Dest)
 
-		_, err := os.Stat(destDir)
-		if os.IsNotExist(err) {
+		if _, err := os.Stat(destDir); os.IsNotExist(err) {
 			log.Println("Creating dir", destDir)
 			os.MkdirAll(destDir, os.ModePerm)
 		}
