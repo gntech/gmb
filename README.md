@@ -1,7 +1,7 @@
 # gmb - The Go Media Bot
 Automates monotone media handling when writing blog posts with a static site generator such as [hugo](https://github.com/gohugoio/hugo).
 
-gmb creates directory structure, resizes images and create a stub blog post containing tags for all your images.
+gmb creates directory structure, copies and resizes images and create a stub blog post containing tags for all your images.
 
 ## Usage scenario
 * You want to write a blog post containing lots of pictures using [hugo](https://github.com/gohugoio/hugo)
