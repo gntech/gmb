@@ -23,7 +23,8 @@ then you run `gmb config.yaml`
 
 gmb will then do the following:
 
+* go through the folder containing the config file and makes a record of all files there. gmb determines which static folder to output the files to and if they should be processed as images or just copied.
 * create /home/username/hugosite/src/static/images/awesome-post
 * process all images in original folder and resize and save the output in the static/images/awesome-post folder. The process strips the exif information but rotates the image if needed.
 * create /home/username/hugosite/src/content/awesome-post.md
-* populate the post with frontmatter and image tags for all the processed images.
+* populate the post with frontmatter and image tags for all the processed images. Anything else than images will get a regular link tag.
