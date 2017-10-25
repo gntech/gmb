@@ -16,7 +16,7 @@ config.yaml
 ``` yaml
 base_dir: /home/username/hugosite/src # The path to your hugo site source.
 slug: awesome-post                    # The slug you want your post to have.
-img_limit: 1000                       # The resoultion limit, always a square, 1000x1000 pixels in this case
+img_limit: 1000                       # The resoultion limit as a square, defaults to 800x800 pixels.
 ```
 
 then you run `gmb config.yaml`

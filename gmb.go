@@ -277,8 +277,12 @@ func writeFrontMatter(f *os.File) {
 	f.WriteString("description: Description placeholder\n")
 	f.WriteString("toplevel: True\n")
 	f.WriteString("draft: True\n")
-	f.WriteString("image_feature: " + fLink + "\n")
-	f.WriteString("image_menu: " + mLink + "\n")
+	if fLink != "" {
+		f.WriteString("image_feature: " + fLink + "\n")
+	}
+	if mLink != "" {
+		f.WriteString("image_menu: " + mLink + "\n")
+	}
 	f.WriteString("---\n\n")
 	f.WriteString("Text placeholder\n\n")
 }
