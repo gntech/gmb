@@ -4,9 +4,6 @@
 package main
 
 import (
-	"github.com/disintegration/imaging"
-	"github.com/rwcarlsen/goexif/exif"
-	"github.com/spf13/viper"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,6 +12,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/disintegration/imaging"
+	"github.com/rwcarlsen/goexif/exif"
+	"github.com/spf13/viper"
 )
 
 func check(e error) {
